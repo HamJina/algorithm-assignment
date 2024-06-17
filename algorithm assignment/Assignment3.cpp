@@ -150,17 +150,13 @@ int main() {
     ofstream output;
     output.open("maxcut.out");
 
-    // Output S' partition
-    for (int i = 0; i < V; ++i) {
-        if (bestPartition[i] == 0) { // Partition S'
-            output << i + 1 << " "; // Adjust back to 1-based indexing
-        }
-    }
-    output << endl;
-
     // Calculate cut weight between partitions S and S'
-    int cutWeight = calculateCutWeightBetweenPartitions(bestPartition, graph.edges);
-    output << "연결된 가중치의 합: " << cutWeight << endl;
+    for(int i = 0; i < 500; i++)
+    { 
+        int cutWeight = calculateCutWeightBetweenPartitions(bestPartition, graph.edges);
+        output << cutWeight << endl;
+    }
+    
     output.close();
 
     return 0;

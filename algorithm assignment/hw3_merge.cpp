@@ -45,17 +45,56 @@ int calculateCutWeight(const vector<int>& partition, const Graph& graph) {
     return cutWeight;
 }
 
-// Calculate cut weight between partitions S and S'
-int calculateCutWeightBetweenPartitions(const vector<int>& partition, const vector<Edge>& edges) {
-    int cutWeight = 0;
-    for (const auto& edge : edges) {
-        if (partition[edge.src] != partition[edge.dest]) {
-            cutWeight += edge.weight;
-        }
+// Merge function for merge sort
+void merge(vector<pair<int, vector<int>>>& arr, int l, int m, int r) {
+    int n1 = m - l + 1;
+    int n2 = r - m;
+
+    vector<pair<int, vector<int>>> L(n1), R(n2);
+
+    for (int i = 0; i < n1; i++) {
+        L[i] = arr[l + i];
     }
-    return cutWeight;
+    for (int j = 0; j < n2; j++) {
+        R[j] = arr[m + 1 + j];
+    }
+
+    int i = 0, j = 0, k = l;
+    while (i < n1 && j < n2) {
+        if (L[i].first >= R[j].first) {
+            arr[k] = L[i];
+            i++;
+        }
+        else {
+            arr[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+
+    while (i < n1) {
+        arr[k] = L[i];
+        i++;
+        k++;
+    }
+
+    while (j < n2) {
+        arr[k] = R[j];
+        j++;
+        k++;
+    }
 }
 
+// Merge sort function
+void mergeSort(vector<pair<int, vector<int>>>& arr, int l, int r) {
+    if (l >= r) {
+        return;
+    }
+    int m = l + (r - l) / 2;
+    mergeSort(arr, l, m);
+    mergeSort(arr, m + 1, r);
+    merge(arr, l, m, r);
+}
 
 // Genetic Algorithm for Max-Cut Problem
 vector<int> geneticAlgorithmMaxCut(const Graph& graph, int populationSize, int generations) {
@@ -79,8 +118,8 @@ vector<int> geneticAlgorithmMaxCut(const Graph& graph, int populationSize, int g
             fitness.push_back({ cutWeight, individual });
         }
 
-        // Sort individuals by fitness
-        sort(fitness.begin(), fitness.end(), greater<pair<int, vector<int>>>());
+        // Sort individuals by fitness using merge sort
+        mergeSort(fitness, 0, fitness.size() - 1);
 
         // Update best partition
         if (fitness[0].first > bestCutWeight) {
@@ -88,20 +127,29 @@ vector<int> geneticAlgorithmMaxCut(const Graph& graph, int populationSize, int g
             bestPartition = fitness[0].second;
         }
 
-        // Select top individuals for reproduction (elitism)
+        // Select top individuals for reproduction
         vector<vector<int>> selected(populationSize / 2);
         for (int i = 0; i < populationSize / 2; ++i) {
-            int idx1 = rand() % populationSize;
-            int idx2 = rand() % populationSize;
-            selected[i] = (fitness[idx1].first > fitness[idx2].first) ? fitness[idx1].second : fitness[idx2].second;
+            selected[i] = fitness[i].second;
         }
 
         // Crossover and mutation
         for (int i = 0; i < populationSize / 2; i += 2) {
-            // Perform crossover
-            int crossoverPoint = rand() % graph.V;
-            for (int j = 0; j < crossoverPoint; ++j) {
-                swap(selected[i][j], selected[i + 1][j]);
+            // Perform crossover (k-point cross-over)
+            int k = 2; // Number of points for k-point cross-over
+            vector<int> crossoverPoints(k);
+            for (int j = 0; j < k; ++j) {
+                crossoverPoints[j] = rand() % graph.V; // Randomly select crossover points
+            }
+            sort(crossoverPoints.begin(), crossoverPoints.end()); // Sort crossover points
+            int idx = 0;
+            for (int j = 0; j < graph.V; ++j) {
+                if (j >= crossoverPoints[idx] && idx < k - 1) {
+                    idx++;
+                }
+                if (idx % 2 == 0) {
+                    swap(selected[i][j], selected[i + 1][j]);
+                }
             }
 
             // Perform mutation
@@ -124,7 +172,7 @@ int main() {
     // Set random seed
     srand(time(0));
 
-    ifstream input("unweighted_50.txt");
+    ifstream input("chimera_946.txt");
 
     if (input.fail()) {
         cout << "파일을 열 수 없습니다." << endl;
@@ -137,18 +185,21 @@ int main() {
     Graph graph(V, E);
     for (int i = 0; i < E; ++i) {
         int src, dest, weight;
-        while (input >> src >> dest >> weight) {
-            graph.addEdge(src - 1, dest - 1, weight); // Adjust vertex indices to start from 0
-        }
+        input >> src >> dest >> weight;
+        graph.addEdge(src - 1, dest - 1, weight); // Adjust vertex indices to start from 0
     }
 
     input.close();
 
-    // Solve Max-Cut Problem using Genetic Algorithm
-    vector<int> bestPartition = geneticAlgorithmMaxCut(graph, 100, 1000);
+    // Solve Max-Cut Problem using Genetic Algorithm with population size of 500
+    vector<int> bestPartition = geneticAlgorithmMaxCut(graph, 500, 1000);
+
+
 
     ofstream output;
     output.open("maxcut.out");
+
+
 
     // Output S' partition
     for (int i = 0; i < V; ++i) {
@@ -156,12 +207,8 @@ int main() {
             output << i + 1 << " "; // Adjust back to 1-based indexing
         }
     }
-    output << endl;
 
-    // Calculate cut weight between partitions S and S'
-    int cutWeight = calculateCutWeightBetweenPartitions(bestPartition, graph.edges);
-    output << "연결된 가중치의 합: " << cutWeight << endl;
-    output.close();
+    output << endl;
 
     return 0;
 }
